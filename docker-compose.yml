@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: hubspot_etl_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hubspot_etl
+      POSTGRES_USER: etl_user
+      POSTGRES_PASSWORD: StrongPassword123!
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U etl_user -d hubspot_etl"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: hubspot_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=hubspot_etl
+      - DB_USER=etl_user
+      - DB_PASSWORD=StrongPassword123!
+    ports:
+      - "4117:4117"
+    volumes:
+      - .:/app
+
+volumes:
+  postgres_data:
